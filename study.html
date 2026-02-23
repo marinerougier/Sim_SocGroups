@@ -181,7 +181,7 @@ var Instr_gene1 = {
     html += "Group members can be perceived as similar for many different reasons. ";
     html += "They may be seen as having similar personalities, similar behaviors, similar physical characteristics, ";
     html += "similar lifestyles, similar interests, or similar values.<br><br>";
-    html += "In this study, <b>we are interested in how similar or different members of social groups seem to you in a broad and general sense.</b></p>";
+    html += "In this study, <b>we are interested in how similar or different members of social groups seem to you overall (i.e., their overall similarity).</b></p>";
     html += "<p><br>Press <span class='light-keys'><kbd>space</kbd></span> to continue</p>";
     return html;
   },
@@ -196,8 +196,8 @@ var Instr_gene2 = {
     var html = "";
     html += "<h1>Study on Group Perception</h1>";
     html += "<p class='justify'>Your task is to indicate to what extent you think that <b>individuals that belong to a given social group (e.g., vegetarians) are similar to individuals that belong to another social group (e.g., heavy metal fans).</b> You will have to evaluate a <b>total of 50 group pairs. </b><br><br>";
-    html += "When making your judgment, try to think in terms of how similar or different members of social groups seem to you in a broad and general sense.<br><br>";
-    html += "For each pair, you will use a scale from <b>0 (not at all similar)</b> to <b>5 (totally similar)</b>.<br><br>";
+    html += "When making your judgment, try to think in terms of their overall similarity.<br><br>";
+    html += "For each pair, you will use a scale from <b>0 (not at all similar)</b> to <b>7 (totally similar)</b>.<br><br>";
     html += "Please rely on your first impression and respond as honestly and spontaneously as possible. ";
     html += "There are no correct or incorrect answers, we are interested in your genuine opinion.</p>";
     html += "<p><br>Press <span class='light-keys'><kbd>space</kbd></span> to begin</p>";
@@ -212,7 +212,7 @@ var Instr_gene2 = {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_")
-    .replace(/[^\w]/g, ""); // garde lettres/chiffres/underscore
+    .replace(/[^\w]/g, ""); // keeps letters/numbers/underscore
 	}
 
 var similarity_questions = [];
@@ -224,7 +224,7 @@ for (var k = 0; k < randomPairs.length; k++) {
   similarity_questions.push({
     prompt: "Are <b>" + groupA + "</b> similar to <b>" + groupB + "</b>?",
     name: "pair_" + k + "__" + slugify(groupA) + "__" + slugify(groupB),
-    labels: ["0<br>Not at all similar", "1", "2", "3", "4", "5<br>Totally similar"],
+    labels: ["0<br>Not at all similar", "1", "2", "3", "4", "5", "6", "7<br>Totally similar"],
     required: true
   });
 }
@@ -238,7 +238,7 @@ var similarity_questionnaire = {
 };
 
 
-  /* AGE */
+  /* DEMOGRAPHICS */
   var age = {
       timeline: [{
         type: 'survey-text',
