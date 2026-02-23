@@ -197,7 +197,7 @@ var Instr_gene2 = {
     html += "<h1>Study on Group Perception</h1>";
     html += "<p class='justify'>Your task is to indicate to what extent you think that <b>individuals that belong to a given social group (e.g., vegetarians) are similar to individuals that belong to another social group (e.g., heavy metal fans).</b> You will have to evaluate a <b>total of 50 group pairs. </b><br><br>";
     html += "When making your judgment, try to think in terms of their overall similarity.<br><br>";
-    html += "For each pair, you will use a scale from <b>0 (not at all similar)</b> to <b>7 (totally similar)</b>.<br><br>";
+    html += "For each pair, you will use a scale from <b>1 (not at all similar)</b> to <b>7 (totally similar)</b>.<br><br>";
     html += "Please rely on your first impression and respond as honestly and spontaneously as possible. ";
     html += "There are no correct or incorrect answers, we are interested in your genuine opinion.</p>";
     html += "<p><br>Press <span class='light-keys'><kbd>space</kbd></span> to begin</p>";
@@ -224,7 +224,7 @@ for (var k = 0; k < randomPairs.length; k++) {
   similarity_questions.push({
     prompt: "Are <b>" + groupA + "</b> similar to <b>" + groupB + "</b>?",
     name: "pair_" + k + "__" + slugify(groupA) + "__" + slugify(groupB),
-    labels: ["0<br>Not at all similar", "1", "2", "3", "4", "5", "6", "7<br>Totally similar"],
+    labels: ["1<br>Not at all similar", "2", "3", "4", "5", "6", "7<br>Totally similar"],
     required: true
   });
 }
