@@ -301,7 +301,7 @@ var similarity_questionnaire = {
   },
   on_finish: function(data) {
     var responses = JSON.parse(data.responses);
-    var response = responses["Q" + similarity_attention_position];
+    var response = responses["similarity_attention_check"];
     var response_value = response !== undefined && response !== null ? String(Number(response) + 1) : null;
     var result = (response_value === "7") ? "CORRECT" : "FALSE";
 
@@ -367,6 +367,9 @@ function makeMultiChoiceWithSpecify(config) {
       var containerId = config.data_name + "_specify_container";
       var inputId = config.data_name + "_specify";
 
+      // initialize storage
+      window[config.data_name + "_specify_value"] = "";
+
       if (questionDiv && continueBtn && !document.getElementById(containerId)) {
         var specifyContainer = document.createElement("div");
         specifyContainer.id = containerId;
@@ -421,9 +424,11 @@ function makeMultiChoiceWithSpecify(config) {
             input.reportValidity();
             input.focus();
             return false;
-          } else {
-            input.setCustomValidity("");
           }
+
+          // save before trial finishes
+          window[config.data_name + "_specify_value"] = input.value.trim();
+          input.setCustomValidity("");
         }, true);
 
         toggleSpecifyBox();
@@ -434,11 +439,13 @@ function makeMultiChoiceWithSpecify(config) {
       var responses = JSON.parse(data.responses);
       var selectedValue = responses.Q0;
       var specifyText = "";
-      var input = document.getElementById(config.data_name + "_specify");
 
       if (config.specify_for.indexOf(selectedValue) !== -1) {
-        specifyText = input ? input.value.trim() : "";
+        specifyText = window[config.data_name + "_specify_value"] || "";
       }
+
+      data[config.data_name] = selectedValue;
+      data[config.data_name + "_specify"] = specifyText;
 
       var toSave = {};
       toSave[config.data_name] = selectedValue;
@@ -543,7 +550,7 @@ var SRSI_trial = {
   button_label: "Continue",
   on_finish: function(data) {
     jsPsych.data.addProperties({
-      SRSI: JSON.parse(data.responses).Q0,
+      SRSI: JSON.parse(data.responses).SRSI,
     });
   }
 };
