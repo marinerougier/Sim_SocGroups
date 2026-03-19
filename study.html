@@ -167,6 +167,59 @@ var consent = {
   check_fn: check_consent
 };
 
+// Native language check 
+var native_check = {
+  type: 'survey-multi-choice',
+  questions: [{prompt: "To participate in this study, <b>you must be a native English speaker.</b> If you are NOT a native English speaker, please withdraw your participation and close this window.", options: ['I confirm I am a native English speaker'], required: true}],
+  button_label: "Continue",
+  on_finish: function(data) {
+      jsPsych.data.addProperties({
+          native_check: JSON.parse(data.responses)["Q0"],
+      });
+   },
+};
+
+// First attention check 
+var attentionCheck1 = {
+  type: 'survey-multi-choice',
+  preamble:
+    "<div style='height: 3.5rem;'></div>" +
+    "<div style='text-align: justify;'>" +
+    "<p>" +
+    "In studies like ours, there is sometimes a tendency to skim the reading sections without concentration and answer the questions blindly and randomly just to finish the experiment quickly. " +
+    "These random answers harm the results of the studies. " +
+    "Therefore, it is very important to maintain attention and high concentration when reading the entire passage and all the questions. " +
+    "To ensure data quality, we will include several attention check questions throughout the study. If you fail at least two of the attention checks, you will not be paid. Below is the first attention check. Please make sure to read it carefully." +
+    "</p>" +
+    "<p>" +
+    "To show that you have read the question carefully, and regardless of your personal opinion, we will ask you to choose the Tik-Tok answer in the following question:" +
+    "</p>" +
+    "</div>",
+  questions: [{
+    prompt:
+      "<div style='text-align: justify;'>" +
+      "When an important event occurs or is about to occur, there is a tendency in humans to try and obtain information about the development of the event. In such a situation, what would be your primary source of information?" +
+      "</div>",
+    options: ["Radio", "Instagram", "Newspapers", "Facebook", "Tik-Tok", "Youtube", "Twitter", "T.V.", "Other"],
+    required: true,
+    horizontal: false
+  }],
+  button_label: "Continue",
+  on_finish: function(data) {
+    var responses = JSON.parse(data.responses);
+    var response = responses.Q0;
+    var result = (response === "Tik-Tok") ? "CORRECT" : "FALSE";
+
+    data.attentionCheck1 = response;
+    data.attentionCheck1_result = result;
+
+    jsPsych.data.addProperties({
+      attentionCheck1: response,
+      attentionCheck1_result: result
+    });
+  }
+};
+
   /* General INSTRUCTIONS */
 var Instr_gene1 = {
   type: "html-keyboard-response",
@@ -206,14 +259,15 @@ var Instr_gene2 = {
 };
 
 
-  // Judgments on group similarity
-  function slugify(str) {
+/* Judgments on group similarity */
+
+function slugify(str) {
   return String(str)
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_")
-    .replace(/[^\w]/g, ""); // keeps letters/numbers/underscore
-	}
+    .replace(/[^\w]/g, "");
+}
 
 var similarity_questions = [];
 
@@ -229,14 +283,39 @@ for (var k = 0; k < randomPairs.length; k++) {
   });
 }
 
+var similarity_attention_item = {
+  prompt: "Specifically for this item, please choose <b>Totally similar</b>.",
+  name: "similarity_attention_check",
+  labels: ["1<br>Not at all similar", "2", "3", "4", "5", "6", "7<br>Totally similar"],
+  required: true
+};
+
+var similarity_attention_position = Math.floor(Math.random() * (similarity_questions.length + 1));
+similarity_questions.splice(similarity_attention_position, 0, similarity_attention_item);
+
 var similarity_questionnaire = {
   type: 'survey-likert',
   questions: similarity_questions,
   data: {
     task: "group_similarity"
+  },
+  on_finish: function(data) {
+    var responses = JSON.parse(data.responses);
+    var response = responses["Q" + similarity_attention_position];
+    var response_value = response !== undefined && response !== null ? String(Number(response) + 1) : null;
+    var result = (response_value === "7") ? "CORRECT" : "FALSE";
+
+    data.similarity_attention = response_value;
+    data.similarity_attention_result = result;
+    data.similarity_attention_position = similarity_attention_position;
+
+    jsPsych.data.addProperties({
+      similarity_attention: response_value,
+      similarity_attention_result: result,
+      similarity_attention_position: similarity_attention_position
+    });
   }
 };
-
 
   /* DEMOGRAPHICS */
   var age = {
@@ -265,13 +344,143 @@ var similarity_questionnaire = {
       },
   };
 
-  var gender = {
+
+/* 'Please specify' function */
+function makeMultiChoiceWithSpecify(config) {
+  return {
+    type: 'survey-multi-choice',
+    questions: [{
+      prompt: config.prompt,
+      options: config.options,
+      required: true
+    }],
+    button_label: config.button_label || "Continue",
+
+    on_load: function() {
+      window.scrollTo(0, 0);
+      $(".jspsych-content").css("margin-top", "200px");
+      $(".jspsych-content").css("max-width", "90%");
+
+      var radioName = "jspsych-survey-multi-choice-response-0";
+      var questionDiv = document.querySelector(".jspsych-survey-multi-choice-question");
+      var continueBtn = document.getElementById("jspsych-survey-multi-choice-next");
+      var containerId = config.data_name + "_specify_container";
+      var inputId = config.data_name + "_specify";
+
+      if (questionDiv && continueBtn && !document.getElementById(containerId)) {
+        var specifyContainer = document.createElement("div");
+        specifyContainer.id = containerId;
+        specifyContainer.style.height = (config.reserve_height || 90) + "px";
+        specifyContainer.style.marginTop = "15px";
+        specifyContainer.style.visibility = "hidden";
+
+        specifyContainer.innerHTML =
+          "<label for='" + inputId + "'><b>" + (config.specify_label || "Please specify:") + "</b></label><br>" +
+          "<input type='text' id='" + inputId + "' " +
+          "style='width:400px; max-width:100%; padding:6px; margin-top:5px; box-sizing:border-box;'>";
+
+        questionDiv.parentNode.insertBefore(specifyContainer, continueBtn);
+
+        var radios = document.querySelectorAll('input[name="' + radioName + '"]');
+        var input = document.getElementById(inputId);
+
+        function shouldShow(selectedValue) {
+          return config.specify_for.indexOf(selectedValue) !== -1;
+        }
+
+        function toggleSpecifyBox() {
+          var selected = document.querySelector('input[name="' + radioName + '"]:checked');
+          var showBox = selected && shouldShow(selected.value);
+
+          specifyContainer.style.visibility = showBox ? "visible" : "hidden";
+
+          if (!showBox) {
+            input.value = "";
+            input.setCustomValidity("");
+          }
+        }
+
+        radios.forEach(function(radio) {
+          radio.addEventListener("change", toggleSpecifyBox);
+        });
+
+        input.addEventListener("input", function() {
+          if (input.value.trim() !== "") {
+            input.setCustomValidity("");
+          }
+        });
+
+        continueBtn.addEventListener("click", function(e) {
+          var selected = document.querySelector('input[name="' + radioName + '"]:checked');
+          var mustSpecify = selected && shouldShow(selected.value);
+
+          if (mustSpecify && input.value.trim() === "") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            input.setCustomValidity(config.validation_message || "Please fill in this field.");
+            input.reportValidity();
+            input.focus();
+            return false;
+          } else {
+            input.setCustomValidity("");
+          }
+        }, true);
+
+        toggleSpecifyBox();
+      }
+    },
+
+    on_finish: function(data) {
+      var responses = JSON.parse(data.responses);
+      var selectedValue = responses.Q0;
+      var specifyText = "";
+      var input = document.getElementById(config.data_name + "_specify");
+
+      if (config.specify_for.indexOf(selectedValue) !== -1) {
+        specifyText = input ? input.value.trim() : "";
+      }
+
+      var toSave = {};
+      toSave[config.data_name] = selectedValue;
+      toSave[config.data_name + "_specify"] = specifyText;
+
+      jsPsych.data.addProperties(toSave);
+    }
+  };
+}
+
+
+var gender = makeMultiChoiceWithSpecify({
+  prompt: "Please indicate your gender:",
+  options: ['Male', 'Female', 'Other'],
+  specify_for: ['Other'],
+  data_name: 'gender',
+  validation_message: "Please specify your gender."
+});
+
+var ethnicity = makeMultiChoiceWithSpecify({
+  prompt: "What is your ethnicity?",
+  options: ['White', 'Black', 'Asian', 'Mixed', 'Other'],
+  specify_for: ['Mixed', 'Other'],
+  data_name: 'ethnicity',
+  validation_message: "Please specify your ethnicity."
+});
+
+var political_affiliation = makeMultiChoiceWithSpecify({
+  prompt: "Which of the following best represents your political affiliation?",
+  options: ['Democrat', 'Republican', 'Independent', 'Other'],
+  specify_for: ['Other'],
+  data_name: 'political_affiliation',
+  validation_message: "Please specify your political affiliation."
+});
+
+  var location_residence = {
       type: 'survey-multi-choice',
-      questions: [{prompt: "Please indicate your gender:", options: ['Male', 'Female', 'Other'], required: true}],
+      questions: [{prompt: "Please indicate your current U.S. area of primary residence:", options: ['Midwest', 'Northeast', 'South','West'], required: true}],
       button_label: "Continue",
       on_finish: function(data) {
           jsPsych.data.addProperties({
-              gender: JSON.parse(data.responses)["Q0"],
+              location_residence: JSON.parse(data.responses)["Q0"],
           });
       },
   };
@@ -309,6 +518,35 @@ var similarity_questionnaire = {
             });
         },
     };
+
+var SRSI_trial = {
+  type: 'survey-multi-choice',
+  preamble:
+    "<div class='main-text' style='text-align: justify;'>" +
+      "<p>" +
+      "It is vital to our study that we only include data that accurately reflect participants’ genuine responses. " +
+      "Otherwise, years of effort—from the researchers and from other participants—could be compromised." +
+      "</p>" +
+      "<p>" +
+      "You will receive credit for this study no matter what. Please answer the question below as honestly as possible." +
+      "</p>" +
+    "</div>",
+  questions: [{
+    prompt:
+      "<div class='main-text' style='text-align: justify;'>" +
+      "<p><strong>In your honest opinion, should we use your data in our analysis?</strong></p>" +
+      "</div>",
+    name: "SRSI",
+    options: ["Yes", "No"],
+    required: true
+  }],
+  button_label: "Continue",
+  on_finish: function(data) {
+    jsPsych.data.addProperties({
+      SRSI: JSON.parse(data.responses).Q0,
+    });
+  }
+};
 
   var comments = {
         timeline: [{
@@ -358,15 +596,21 @@ debrief += "<a href='https://app.prolific.com/submissions/complete?cc=CLJXJHVA' 
 
 
   // TIMELINE ----------------------------------------------------------------------------------------------------------
-  timeline.push(consent);
+  //timeline.push(consent);
   timeline.push(activeFullscreen);
-  timeline.push(Instr_gene1);
-  timeline.push(Instr_gene2);
+  timeline.push(native_check);
+  timeline.push(attentionCheck1);
+  //timeline.push(Instr_gene1);
+  //timeline.push(Instr_gene2);
   timeline.push(similarity_questionnaire);
   timeline.push(age);
   timeline.push(gender);
+  timeline.push(ethnicity);
+  timeline.push(political_affiliation);
+  timeline.push(location_residence);
   timeline.push(language);
   timeline.push(Prolific_reported);
+  timeline.push(SRSI_trial);
   timeline.push(comments);
   timeline.push(exitFullscreen);
   
